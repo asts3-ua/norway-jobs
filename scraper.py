@@ -63,10 +63,76 @@ ALL_KEYWORDS = KEYWORDS_IT + KEYWORDS_FINANCE + KEYWORDS_RESEARCH
 
 
 def fetch_jobs_nav():
-    """Buscar trabajos en arbeidsplassen.nav.no - NOTA: Requiere JavaScript rendering"""
-    log("ℹ️  arbeidsplassen.nav.no usa renderizado JavaScript - saltando por ahora")
-    log("   (Los datos están disponibles en finn.no)")
-    return []
+    """Buscar trabajos via la API JSON de arbeidsplassen.nav.no."""
+    all_jobs = []
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+        "Accept": "application/json",
+    }
+    api_url = "https://arbeidsplassen.nav.no/stillinger/api/search"
+
+    # Todas las ofertas de IT por categoría de ocupación (paginado)
+    log("  arbeidsplassen.nav.no: obteniendo categoría IT...")
+    offset = 0
+    page_size = 100
+    while True:
+        try:
+            params = {"size": page_size, "occupationFirstLevels[]": "IT", "from": offset}
+            r = requests.get(api_url, params=params, headers=headers, timeout=15)
+            if r.status_code != 200:
+                log(f"  arbeidsplassen.nav.no: status {r.status_code} en offset {offset}")
+                break
+            data = r.json()
+            hits = data["hits"]["hits"]
+            total = data["hits"]["total"]["value"]
+            for h in hits:
+                src = h["_source"]
+                props = src.get("properties", {})
+                tags = " ".join(t.get("label", "") for t in props.get("searchtags", []))
+                all_jobs.append({
+                    "_source": "arbeidsplassen.nav.no",
+                    "title": src.get("title", ""),
+                    "description": tags,
+                    "employer": src.get("employer", {}),
+                    "locationList": src.get("locationList", []),
+                    "uuid": src.get("uuid", ""),
+                    "applicationDue": props.get("applicationdue", ""),
+                })
+            if len(hits) < page_size or len(all_jobs) >= total:
+                break
+            offset += page_size
+        except Exception as e:
+            log(f"  arbeidsplassen.nav.no error (IT, offset={offset}): {str(e)[:120]}")
+            break
+
+    log(f"  arbeidsplassen.nav.no IT: {len(all_jobs)} ofertas")
+
+    # Búsquedas adicionales por keywords de finanzas e investigación
+    extra_queries = ["fintech", "finance", "data analyst", "machine learning", "forsker", "PhD"]
+    for kw in extra_queries:
+        try:
+            r = requests.get(api_url, params={"q": kw, "size": 100}, headers=headers, timeout=15)
+            if r.status_code != 200:
+                continue
+            hits = r.json()["hits"]["hits"]
+            for h in hits:
+                src = h["_source"]
+                props = src.get("properties", {})
+                tags = " ".join(t.get("label", "") for t in props.get("searchtags", []))
+                all_jobs.append({
+                    "_source": "arbeidsplassen.nav.no",
+                    "title": src.get("title", ""),
+                    "description": tags,
+                    "employer": src.get("employer", {}),
+                    "locationList": src.get("locationList", []),
+                    "uuid": src.get("uuid", ""),
+                    "applicationDue": props.get("applicationdue", ""),
+                })
+            log(f"  arbeidsplassen.nav.no '{kw}': {len(hits)} ofertas")
+        except Exception as e:
+            log(f"  arbeidsplassen.nav.no error ('{kw}'): {str(e)[:120]}")
+
+    return all_jobs
 
 
 def fetch_jobs_finn_with_playwright(keyword):
@@ -269,7 +335,7 @@ def filter_and_categorize(jobs):
                 elif isinstance(job.get("employer"), str):
                     employer = job["employer"]
             else:  # finn.no
-                employer = job.get("company", "") or job.get("organisation", "")
+                employer = job.get("employer", "") or job.get("company", "") or job.get("organisation", "")
             
             # Construcción de URL
             url = job.get("url", "")
