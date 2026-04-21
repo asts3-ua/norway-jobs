@@ -25,6 +25,17 @@ jobs:
       - name: Install Playwright browser
         run: python -m playwright install --with-deps chromium
 
+      - name: Validate required secrets
+        env:
+          GMAIL_USER: ${{ secrets.GMAIL_USER }}
+          GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
+        run: |
+          if [ -z "$GMAIL_USER" ] || [ -z "$GMAIL_APP_PASSWORD" ]; then
+            echo "ERROR: Missing required secrets (GMAIL_USER and/or GMAIL_APP_PASSWORD)."
+            exit 1
+          fi
+          echo "Secrets validation OK"
+
       - name: Run job scraper
         env:
           GMAIL_USER: ${{ secrets.GMAIL_USER }}
