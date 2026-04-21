@@ -206,12 +206,18 @@ def categorize_job(title, description):
 
 def filter_and_categorize(jobs):
     matched = {"💻 IT/Tech": [], "💹 Finanzas/Fintech": [], "🔬 Investigación": []}
+    skipped = 0
+    
     for job in jobs:
         source = job.get("_source", "unknown")
         title = job.get("title", "") or job.get("heading", "")
         description = (job.get("description", "") or job.get("body", "")) or ""
         text = (title + " " + description).lower()
-        if any(kw.lower() in text for kw in ALL_KEYWORDS):
+        
+        # Busca si hay alguna keyword
+        found_keywords = [kw for kw in ALL_KEYWORDS if kw.lower() in text]
+        
+        if found_keywords:
             category = categorize_job(title, description)
             
             # Manejo de ubicación
@@ -249,6 +255,12 @@ def filter_and_categorize(jobs):
                 "url": url,
                 "source": source
             })
+        else:
+            skipped += 1
+            # Log de debug para primeras 5 que se saltan
+            if skipped <= 5:
+                print(f"  [SKIPPED] {title[:60]} | {source} | Text length: {len(text)}")
+    
     return matched
 
 def build_email_html(categorized):
@@ -317,19 +329,28 @@ def main():
     nav_jobs = fetch_jobs_nav()
     print(f"📦 {len(nav_jobs)} ofertas obtenidas de arbeidsplassen")
     
-    print("🔍 Buscando ofertas en finn.no...")
+    print("\n🔍 Buscando ofertas en finn.no...")
     finn_jobs = fetch_jobs_finn()
     print(f"📦 {len(finn_jobs)} ofertas obtenidas de finn.no")
     
     raw_jobs = nav_jobs + finn_jobs
-    print(f"📦 {len(raw_jobs)} ofertas totales obtenidas")
+    print(f"\n📦 {len(raw_jobs)} ofertas totales obtenidas")
+    
+    # Debug: mostrar primeras 3 ofertas
+    print("\n📋 Primeras 3 ofertas sin procesar:")
+    for i, job in enumerate(raw_jobs[:3]):
+        title = job.get("title", "")[:60]
+        source = job.get("_source", "unknown")
+        desc_len = len(job.get("description", ""))
+        print(f"  {i+1}. [{source}] {title} (desc: {desc_len} chars)")
     
     unique_jobs = deduplicate(raw_jobs)
-    print(f"🔄 {len(unique_jobs)} ofertas únicas tras deduplicar")
+    print(f"\n🔄 {len(unique_jobs)} ofertas únicas tras deduplicar")
     
+    print("\n🔍 Filtrando por keywords...")
     categorized = filter_and_categorize(unique_jobs)
     total = sum(len(v) for v in categorized.values())
-    print(f"✅ {total} ofertas relevantes filtradas")
+    print(f"\n✅ {total} ofertas relevantes filtradas")
     for cat, jobs in categorized.items():
         print(f"   {cat}: {len(jobs)}")
     
