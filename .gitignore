@@ -1,0 +1,7 @@
+__pycache__/
+*.pyc
+*.pyo
+job_scraper.log
+job_email_preview.html
+.env
+.vscode/
