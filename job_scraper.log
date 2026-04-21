@@ -1,6 +1,12 @@
 === INICIO EJECUCIÓN ===
-ℹ️  arbeidsplassen.nav.no usa renderizado JavaScript - saltando por ahora
-   (Los datos están disponibles en finn.no)
+  arbeidsplassen.nav.no: obteniendo categoría IT...
+  arbeidsplassen.nav.no IT: 551 ofertas
+  arbeidsplassen.nav.no 'fintech': 21 ofertas
+  arbeidsplassen.nav.no 'finance': 59 ofertas
+  arbeidsplassen.nav.no 'data analyst': 18 ofertas
+  arbeidsplassen.nav.no 'machine learning': 45 ofertas
+  arbeidsplassen.nav.no 'forsker': 100 ofertas
+  arbeidsplassen.nav.no 'PhD': 100 ofertas
   finn.no 'developer': status 200, url=https://www.finn.no/job/search?q=developer
     articles encontrados: 51
   finn.no 'developer': 51 ofertas
@@ -15,34 +21,37 @@
   finn.no 'fintech': 28 ofertas
 📦 181 ofertas obtenidas de finn.no
 
-📊 181 ofertas totales obtenidas
+📊 1075 ofertas totales obtenidas
 
 📋 Primeras 3 ofertas sin procesar:
-  1. [finn.no] Embedded Software DeveloperSleipner Motor ASVil du styre hel (desc: 185 chars)
-  2. [finn.no] UtviklerPasientreiser HFSkien8 dager sidenLegg til som favor (desc: 64 chars)
-  3. [finn.no] Software DeveloperNOBA BANK GROUPFornebuen måned sidenLegg t (desc: 76 chars)
+  1. [arbeidsplassen.nav.no] Senior Embedded Software Engineer (C++ / Embedded Linux) (desc: 0 chars)
+  2. [arbeidsplassen.nav.no] Vil du være en strategisk leder for et av Norges mest kompet (desc: 70 chars)
+  3. [arbeidsplassen.nav.no] Sixt Bilutleie søker erfaren systemutvikler (desc: 44 chars)
 
-🔄 171 ofertas únicas tras deduplicar
+🔄 969 ofertas únicas tras deduplicar
 
 🔍 Filtrando por keywords...
-  [MATCH] Embedded Software DeveloperSleipner Motor ASVil du styre hele produktreisen? Uni | finn.no | kws=developer, software
-  [MATCH] UtviklerPasientreiser HFSkien8 dager sidenLegg til som favoritt. | finn.no | kws=utvikler
-  [MATCH] Software DeveloperNOBA BANK GROUPFornebuen måned sidenLegg til som favoritt. | finn.no | kws=developer, software
-  [MATCH] IT UtviklerMOYO ASOsloen dag sidenEnkel søknadLegg til som favoritt. | finn.no | kws=utvikler
-  [MATCH] Backend-utviklerNorconsult DigitalTrondheimen dag sidenLegg til som favoritt. | finn.no | kws=utvikler, backend
-  [MATCH] Backend-utviklerNasjonalbiblioteketMo i Ranaen dag sidenLegg til som favoritt. | finn.no | kws=utvikler, backend, BI
-  [MATCH] Automated Test DeveloperAppear ASAOslo27 dager sidenLegg til som favoritt. | finn.no | kws=developer
-  [MATCH] Power Platform utviklerStatnettOsloen dag sidenLegg til som favoritt. | finn.no | kws=utvikler
-  [MATCH] Senior Integration DeveloperHeadquarter Oslo - StrawberryOslo5 dager sidenLegg t | finn.no | kws=developer, integration
-  [MATCH] IT utviklerSonans ASFrontend/fullstack utviklerOslo5 dager sidenLegg til som fav | finn.no | kws=utvikler, frontend, fullstack
-  [SKIPPED] ProsjektingeniørWELLSTARTER ASVi søker prosjektingeniør inne | finn.no | Text length: 267
-  [SKIPPED] Senioringeniør maskinlæringNGUTrondheim22 dager sidenLegg ti | finn.no | Text length: 151
-  [SKIPPED] Senior dataplattformingeniørStatsbyggOsloen dag sidenLegg ti | finn.no | Text length: 151
-  [SKIPPED] Project Engineer4SubseaDelivering critical decision support  | finn.no | Text length: 239
-  [SKIPPED] Data Science / ML EngineerSopra SteriaLiker du utfordrende o | finn.no | Text length: 261
+  [MATCH] Senior Embedded Software Engineer (C++ / Embedded Linux) | arbeidsplassen.nav.no | kws=software
+  [SKIPPED] Vil du være en strategisk leder for et av Norges mest kompet | arbeidsplassen.nav.no | Text length: 159
+  [MATCH] Sixt Bilutleie søker erfaren systemutvikler | arbeidsplassen.nav.no | kws=utvikler, BI
+  [SKIPPED] Vingmed ansetter sin første CIO | arbeidsplassen.nav.no | Text length: 89
+  [MATCH] Senior systemarkitekt / Full-stack Java-utvikler søkes | arbeidsplassen.nav.no | kws=developer, utvikler, software, fullstack, java
+  [MATCH] Vi søker nå en strukturert og serviceorientert IT-ressurs. | arbeidsplassen.nav.no | kws=IT support, tekniker, drift
+  [MATCH] Er du en frontend-/fullstackutvikler som ønsker å jobbe i skjæringspunktet mello | arbeidsplassen.nav.no | kws=utvikler, frontend, fullstack
+  [SKIPPED] Fagarbeider, Prosesskontroll | arbeidsplassen.nav.no | Text length: 201
+  [MATCH] Experience with simulation? | arbeidsplassen.nav.no | kws=network
+  [MATCH] Senior frontendutvikler | arbeidsplassen.nav.no | kws=utvikler, frontend
+  [SKIPPED] Vil du jobbe i et reklamebyrå med en sterk designavdeling? | arbeidsplassen.nav.no | Text length: 155
+  [SKIPPED] Opptatt av digital sikkerhet? | arbeidsplassen.nav.no | Text length: 83
+  [MATCH] Vil du rett ut i oppdrag? Experis søker Skyarkitekt (Azure) | arbeidsplassen.nav.no | kws=azure
+  [MATCH] Senior Backendutvikler | arbeidsplassen.nav.no | kws=developer, utvikler, backend
+  [MATCH] Tekniker - IKT | arbeidsplassen.nav.no | kws=tekniker
 
-✅ 130 ofertas relevantes filtradas
-   💻 IT/Tech: 93
-   💹 Finanzas/Fintech: 35
-   🔬 Investigación: 2
+✅ 738 ofertas relevantes filtradas
+   💻 IT/Tech: 418
+   💹 Finanzas/Fintech: 170
+   🔬 Investigación: 150
 === FIN EJECUCIÓN ===
+📝 Preview email guardada en job_email_preview.html
+⚠️  No se puede enviar el email: faltan GMAIL_USER o GMAIL_APP_PASSWORD
+   El scraper sí encontró ofertas; solo se omitió el envío de correo.

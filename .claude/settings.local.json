@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(gh run *)",
+      "Bash(python *)",
+      "Bash(PYTHONIOENCODING=utf-8 python scraper.py)",
+      "Bash(git add *)",
+      "Bash(git commit -m ' *)"
+    ]
+  }
+}
