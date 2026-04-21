@@ -10,6 +10,12 @@ from datetime import datetime
 from bs4 import BeautifulSoup
 import logging
 
+try:
+    from playwright.sync_api import sync_playwright
+    HAS_PLAYWRIGHT = True
+except ImportError:
+    HAS_PLAYWRIGHT = False
+
 # Setup logging
 logging.basicConfig(level=logging.INFO, format='%(message)s')
 logger = logging.getLogger(__name__)
@@ -59,6 +65,61 @@ def fetch_jobs_nav():
     log("ℹ️  arbeidsplassen.nav.no usa renderizado JavaScript - saltando por ahora")
     log("   (Los datos están disponibles en finn.no)")
     return []
+
+
+def fetch_jobs_finn_with_playwright(keyword):
+    """Fallback con navegador real cuando requests no devuelve resultados útiles."""
+    extracted = []
+    if not HAS_PLAYWRIGHT:
+        return extracted
+
+    try:
+        with sync_playwright() as p:
+            browser = p.chromium.launch(headless=True)
+            page = browser.new_page(
+                user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+                locale="nb-NO"
+            )
+            page.goto(f"https://www.finn.no/job/search?q={keyword}", wait_until="networkidle", timeout=45000)
+            page.wait_for_timeout(2000)
+
+            cards = page.locator('article[id^="card-"]')
+            count = cards.count()
+            log(f"    Playwright cards encontrados para '{keyword}': {count}")
+
+            for index in range(count):
+                try:
+                    card = cards.nth(index)
+                    link = card.locator('a[href*="/job/ad/"]').first
+                    job_url = link.get_attribute('href') if link.count() > 0 else ""
+                    if job_url and not job_url.startswith('http'):
+                        job_url = f"https://www.finn.no{job_url}"
+
+                    text = card.inner_text(timeout=5000)
+                    lines = [line.strip() for line in text.split('\n') if line.strip()]
+
+                    title = lines[0] if len(lines) > 0 else ""
+                    employer = lines[1] if len(lines) > 1 else ""
+                    location = lines[2] if len(lines) > 2 else ""
+
+                    if title and len(title) > 3:
+                        extracted.append({
+                            "title": title,
+                            "employer": employer,
+                            "location": location,
+                            "url": job_url or "https://www.finn.no/job/search",
+                            "description": text,
+                            "_source": "finn.no"
+                        })
+                except Exception as inner_error:
+                    log(f"    Playwright card error: {str(inner_error)[:100]}")
+
+            browser.close()
+    except Exception as e:
+        log(f"  Playwright fallback error para '{keyword}': {str(e)[:150]}")
+
+    return extracted
+
 def fetch_jobs_finn():
     """Buscar trabajos en finn.no usando web scraping"""
     all_jobs = []
@@ -136,6 +197,13 @@ def fetch_jobs_finn():
                 
                 all_jobs.extend(extracted)
                 log(f"  finn.no '{keyword}': {len(extracted)} ofertas")
+
+                if not extracted and HAS_PLAYWRIGHT:
+                    log(f"  finn.no '{keyword}': sin resultados con requests, probando Playwright")
+                    playwright_jobs = fetch_jobs_finn_with_playwright(keyword)
+                    if playwright_jobs:
+                        all_jobs.extend(playwright_jobs)
+                        log(f"  finn.no '{keyword}': {len(playwright_jobs)} ofertas (Playwright)")
             else:
                 log(f"  finn.no '{keyword}': status {response.status_code}")
         except Exception as e:
