@@ -302,67 +302,56 @@ def categorize_job(title, description):
         return "💹 Finanzas/Fintech"
     return "💻 IT/Tech"
 
+def normalize_job(job):
+    source = job.get("_source", "unknown")
+    title = job.get("title", "") or job.get("heading", "") or "Sin título"
+    description = job.get("description", "") or job.get("body", "") or ""
+
+    if source == "arbeidsplassen.nav.no":
+        location_list = job.get("locationList", [])
+        location = (location_list[0].get("city") or "").title() if location_list else ""
+        employer_raw = job.get("employer", {})
+        employer = (employer_raw.get("name") or "").title() if isinstance(employer_raw, dict) else str(employer_raw)
+        url = f"https://arbeidsplassen.nav.no/stillinger/stilling/{job.get('uuid', '')}"
+    else:
+        location = job.get("location", "") or job.get("region", "") or ""
+        employer = job.get("employer", "") or job.get("company", "") or ""
+        url = job.get("url", "") or "https://www.finn.no"
+
+    return {
+        "title": title[:100],
+        "employer": employer or "Empresa no especificada",
+        "location": location or "Noruega",
+        "deadline": job.get("applicationDue", "") or job.get("deadline", "") or "",
+        "url": url,
+        "source": source,
+        "description": description,
+    }
+
 def filter_and_categorize(jobs):
     matched = {"💻 IT/Tech": [], "💹 Finanzas/Fintech": [], "🔬 Investigación": []}
-    skipped = 0
-    matched_examples = 0
-    
+
     for job in jobs:
         source = job.get("_source", "unknown")
-        title = job.get("title", "") or job.get("heading", "")
-        description = (job.get("description", "") or job.get("body", "")) or ""
-        text = (title + " " + description).lower()
-        
-        # Busca si hay alguna keyword
-        found_keywords = [kw for kw in ALL_KEYWORDS if kw.lower() in text]
-        
-        if found_keywords:
-            category = categorize_job(title, description)
-            
-            # Manejo de ubicación
-            location = ""
-            if source == "arbeidsplassen.nav.no":
-                location_list = job.get("locationList", [])
-                location = location_list[0].get("city", "") if location_list else job.get("location", "")
-            else:  # finn.no
-                location = job.get("location", "") or job.get("region", "")
-            
-            # Manejo del empleador
-            employer = ""
-            if source == "arbeidsplassen.nav.no":
-                if isinstance(job.get("employer"), dict):
-                    employer = job["employer"].get("name", "")
-                elif isinstance(job.get("employer"), str):
-                    employer = job["employer"]
-            else:  # finn.no
-                employer = job.get("employer", "") or job.get("company", "") or job.get("organisation", "")
-            
-            # Construcción de URL
-            url = job.get("url", "")
-            if not url or url == "":
-                if source == "arbeidsplassen.nav.no":
-                    url = f"https://arbeidsplassen.nav.no/stillinger/stilling/{job.get('uuid', '')}"
-                else:  # finn.no
-                    job_id = job.get("adid") or job.get("id", "")
-                    url = f"https://www.finn.no/job/listing/{job_id}" if job_id else "https://www.finn.no"
-            
-            matched[category].append({
-                "title": title[:100] if title else "Sin título",
-                "employer": employer or "Empresa no especificada",
-                "location": location or "Noruega",
-                "deadline": job.get("applicationDue", "") or job.get("deadline", ""),
-                "url": url,
-                "source": source
-            })
-            if matched_examples < 10:
-                log(f"  [MATCH] {title[:80]} | {source} | kws={', '.join(found_keywords[:5])}")
-                matched_examples += 1
+        normalized = normalize_job(job)
+        title = normalized["title"]
+        description = normalized["description"]
+
+        # Jobs from the nav.no API are already category-filtered — include all of them.
+        # Jobs scraped from finn.no need keyword matching since they come from broad searches.
+        if source == "arbeidsplassen.nav.no":
+            passes = True
         else:
-            skipped += 1
-            # Log de debug para primeras 5 que se saltan
-            if skipped <= 5:
-                log(f"  [SKIPPED] {title[:60]} | {source} | Text length: {len(text)}")
-    
+            text = (title + " " + description).lower()
+            passes = any(kw.lower() in text for kw in ALL_KEYWORDS)
+
+        if passes:
+            category = categorize_job(title, description)
+            matched[category].append(normalized)
+            log(f"  [+] {title[:70]} | {source}")
+        else:
+            log(f"  [-] {title[:70]}")
+
     return matched
 
 def build_email_html(categorized, stats=None):
