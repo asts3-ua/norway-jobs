@@ -348,15 +348,26 @@ def build_email_html(categorized):
     return html, total
 
 def send_email(html_content, job_count):
+    if not SENDER_EMAIL or not SENDER_PASSWORD:
+        log("⚠️  No se puede enviar el email: faltan GMAIL_USER o GMAIL_APP_PASSWORD")
+        log("   El scraper sí encontró ofertas; solo se omitió el envío de correo.")
+        return False
+
     msg = MIMEMultipart("alternative")
     msg["Subject"] = f"🇳🇴 {job_count} ofertas en Noruega — {datetime.now().strftime('%d/%m/%Y')}"
     msg["From"] = SENDER_EMAIL
     msg["To"] = RECIPIENT_EMAIL
     msg.attach(MIMEText(html_content, "html"))
-    with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
-        server.login(SENDER_EMAIL, SENDER_PASSWORD)
-        server.sendmail(SENDER_EMAIL, RECIPIENT_EMAIL, msg.as_string())
-    print(f"✅ Email enviado con {job_count} ofertas a {RECIPIENT_EMAIL}")
+    try:
+        with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
+            server.login(SENDER_EMAIL, SENDER_PASSWORD)
+            server.sendmail(SENDER_EMAIL, RECIPIENT_EMAIL, msg.as_string())
+        print(f"✅ Email enviado con {job_count} ofertas a {RECIPIENT_EMAIL}")
+        return True
+    except Exception as e:
+        log(f"❌ Error enviando email: {str(e)[:200]}")
+        log("   El scraper sí encontró ofertas; revisa las credenciales SMTP.")
+        return False
 
 
 def main():
