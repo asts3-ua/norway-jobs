@@ -20,6 +20,8 @@ except ImportError:
 logging.basicConfig(level=logging.INFO, format='%(message)s')
 logger = logging.getLogger(__name__)
 LOG_FILE = Path("job_scraper.log")
+EMAIL_PREVIEW_FILE = Path("job_email_preview.html")
+BUILD_TAG = "GH-ACTIONS-FINN-V3"
 
 
 def log(message):
@@ -297,9 +299,10 @@ def filter_and_categorize(jobs):
     
     return matched
 
-def build_email_html(categorized):
+def build_email_html(categorized, stats=None):
     today = datetime.now().strftime("%d/%m/%Y")
     total = sum(len(v) for v in categorized.values())
+    stats = stats or {}
     sections = ""
     for category, jobs in categorized.items():
         if not jobs:
@@ -337,6 +340,9 @@ def build_email_html(categorized):
                 <p style="margin:6px 0 0; opacity:0.85; font-size:14px;">{total} ofertas relevantes · IT / Fintech / Investigación</p>
             </div>
             <div style="padding:24px 28px;">
+                <div style="font-size:12px; color:#666; background:#f7f7f7; border:1px solid #eee; border-radius:8px; padding:8px 10px; margin-bottom:14px;">
+                    Build: {BUILD_TAG} · Raw: {stats.get('raw', 'n/a')} · Unique: {stats.get('unique', 'n/a')} · Matched: {total}
+                </div>
                 {sections}
                 <p style="margin-top:24px; color:#aaa; font-size:12px; border-top:1px solid #eee; padding-top:16px;">
                     Fuentes: <a href="https://arbeidsplassen.nav.no" style="color:#0057b8;">arbeidsplassen.nav.no</a> · <a href="https://finn.no" style="color:#0057b8;">finn.no</a> — Filtrado por keywords IT/Tech/Fintech para el perfil de Alejandro Sánchez Tilve
@@ -354,7 +360,7 @@ def send_email(html_content, job_count):
         return False
 
     msg = MIMEMultipart("alternative")
-    msg["Subject"] = f"🇳🇴 {job_count} ofertas en Noruega — {datetime.now().strftime('%d/%m/%Y')}"
+    msg["Subject"] = f"[{BUILD_TAG}] 🇳🇴 {job_count} ofertas en Noruega — {datetime.now().strftime('%d/%m/%Y')}"
     msg["From"] = SENDER_EMAIL
     msg["To"] = RECIPIENT_EMAIL
     msg.attach(MIMEText(html_content, "html"))
@@ -415,7 +421,13 @@ def main():
     
     print("\n" + "="*70)
     log("=== FIN EJECUCIÓN ===")
-    html, count = build_email_html(categorized)
+    stats = {"raw": len(raw_jobs), "unique": len(unique_jobs)}
+    html, count = build_email_html(categorized, stats=stats)
+    try:
+        EMAIL_PREVIEW_FILE.write_text(html, encoding="utf-8")
+        log(f"📝 Preview email guardada en {EMAIL_PREVIEW_FILE}")
+    except Exception as e:
+        log(f"⚠️  No se pudo guardar preview email: {str(e)[:120]}")
     send_email(html, count)
 if __name__ == "__main__":
     main()
