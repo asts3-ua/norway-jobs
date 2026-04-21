@@ -2,7 +2,7 @@
   arbeidsplassen.nav.no: obteniendo categoría IT...
   arbeidsplassen.nav.no IT: 551 ofertas
   arbeidsplassen.nav.no 'fintech': 21 ofertas
-  arbeidsplassen.nav.no 'finance': 59 ofertas
+  arbeidsplassen.nav.no 'finance': 58 ofertas
   arbeidsplassen.nav.no 'data analyst': 18 ofertas
   arbeidsplassen.nav.no 'machine learning': 45 ofertas
   arbeidsplassen.nav.no 'forsker': 100 ofertas
@@ -21,14 +21,14 @@
   finn.no 'fintech': 28 ofertas
 📦 181 ofertas obtenidas de finn.no
 
-📊 1075 ofertas totales obtenidas
+📊 1074 ofertas totales obtenidas
 
 📋 Primeras 3 ofertas sin procesar:
   1. [arbeidsplassen.nav.no] Senior Embedded Software Engineer (C++ / Embedded Linux) (desc: 0 chars)
   2. [arbeidsplassen.nav.no] Vil du være en strategisk leder for et av Norges mest kompet (desc: 70 chars)
   3. [arbeidsplassen.nav.no] Sixt Bilutleie søker erfaren systemutvikler (desc: 44 chars)
 
-🔄 969 ofertas únicas tras deduplicar
+🔄 970 ofertas únicas tras deduplicar
 
 🔍 Filtrando por keywords...
   [MATCH] Senior Embedded Software Engineer (C++ / Embedded Linux) | arbeidsplassen.nav.no | kws=software
@@ -48,9 +48,9 @@
   [MATCH] Tekniker - IKT | arbeidsplassen.nav.no | kws=tekniker
 
 ✅ 738 ofertas relevantes filtradas
-   💻 IT/Tech: 418
-   💹 Finanzas/Fintech: 170
-   🔬 Investigación: 150
+   💻 IT/Tech: 419
+   💹 Finanzas/Fintech: 168
+   🔬 Investigación: 151
 === FIN EJECUCIÓN ===
 📝 Preview email guardada en job_email_preview.html
 ⚠️  No se puede enviar el email: faltan GMAIL_USER o GMAIL_APP_PASSWORD
