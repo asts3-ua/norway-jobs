@@ -1,0 +1,8 @@
+{
+    "chat.tools.terminal.autoApprove": {
+        "/^pip install beautifulsoup4 -q ; python debug_detailed\\.py$/": {
+            "approve": true,
+            "matchCommandLine": true
+        }
+    }
+}
