@@ -1,0 +1,48 @@
+=== INICIO EJECUCIÓN ===
+ℹ️  arbeidsplassen.nav.no usa renderizado JavaScript - saltando por ahora
+   (Los datos están disponibles en finn.no)
+  finn.no 'developer': status 200, url=https://www.finn.no/job/search?q=developer
+    articles encontrados: 51
+  finn.no 'developer': 51 ofertas
+  finn.no 'python': status 200, url=https://www.finn.no/job/search?q=python
+    articles encontrados: 51
+  finn.no 'python': 51 ofertas
+  finn.no 'IT': status 200, url=https://www.finn.no/job/search?q=IT
+    articles encontrados: 51
+  finn.no 'IT': 51 ofertas
+  finn.no 'fintech': status 200, url=https://www.finn.no/job/search?q=fintech
+    articles encontrados: 28
+  finn.no 'fintech': 28 ofertas
+📦 181 ofertas obtenidas de finn.no
+
+📊 181 ofertas totales obtenidas
+
+📋 Primeras 3 ofertas sin procesar:
+  1. [finn.no] Embedded Software DeveloperSleipner Motor ASVil du styre hel (desc: 185 chars)
+  2. [finn.no] UtviklerPasientreiser HFSkien8 dager sidenLegg til som favor (desc: 64 chars)
+  3. [finn.no] Software DeveloperNOBA BANK GROUPFornebuen måned sidenLegg t (desc: 76 chars)
+
+🔄 171 ofertas únicas tras deduplicar
+
+🔍 Filtrando por keywords...
+  [MATCH] Embedded Software DeveloperSleipner Motor ASVil du styre hele produktreisen? Uni | finn.no | kws=developer, software
+  [MATCH] UtviklerPasientreiser HFSkien8 dager sidenLegg til som favoritt. | finn.no | kws=utvikler
+  [MATCH] Software DeveloperNOBA BANK GROUPFornebuen måned sidenLegg til som favoritt. | finn.no | kws=developer, software
+  [MATCH] IT UtviklerMOYO ASOsloen dag sidenEnkel søknadLegg til som favoritt. | finn.no | kws=utvikler
+  [MATCH] Backend-utviklerNorconsult DigitalTrondheimen dag sidenLegg til som favoritt. | finn.no | kws=utvikler, backend
+  [MATCH] Backend-utviklerNasjonalbiblioteketMo i Ranaen dag sidenLegg til som favoritt. | finn.no | kws=utvikler, backend, BI
+  [MATCH] Automated Test DeveloperAppear ASAOslo27 dager sidenLegg til som favoritt. | finn.no | kws=developer
+  [MATCH] Power Platform utviklerStatnettOsloen dag sidenLegg til som favoritt. | finn.no | kws=utvikler
+  [MATCH] Senior Integration DeveloperHeadquarter Oslo - StrawberryOslo5 dager sidenLegg t | finn.no | kws=developer, integration
+  [MATCH] IT utviklerSonans ASFrontend/fullstack utviklerOslo5 dager sidenLegg til som fav | finn.no | kws=utvikler, frontend, fullstack
+  [SKIPPED] ProsjektingeniørWELLSTARTER ASVi søker prosjektingeniør inne | finn.no | Text length: 267
+  [SKIPPED] Senioringeniør maskinlæringNGUTrondheim22 dager sidenLegg ti | finn.no | Text length: 151
+  [SKIPPED] Senior dataplattformingeniørStatsbyggOsloen dag sidenLegg ti | finn.no | Text length: 151
+  [SKIPPED] Project Engineer4SubseaDelivering critical decision support  | finn.no | Text length: 239
+  [SKIPPED] Data Science / ML EngineerSopra SteriaLiker du utfordrende o | finn.no | Text length: 261
+
+✅ 130 ofertas relevantes filtradas
+   💻 IT/Tech: 93
+   💹 Finanzas/Fintech: 35
+   🔬 Investigación: 2
+=== FIN EJECUCIÓN ===
