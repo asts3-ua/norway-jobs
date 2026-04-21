@@ -1,54 +1,43 @@
-name: 🇳🇴 Norway Jobs Daily
+name: Norway Jobs Daily
 
 on:
   schedule:
     - cron: '0 7 * * *'
   workflow_dispatch:
+  push:
+    branches: [main]
 
 jobs:
   fetch-and-send:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repo
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
 
       - name: Install dependencies
-        run: pip install -r requirements.txt
+        run: pip install requests beautifulsoup4
 
-      - name: Validate required secrets
-        env:
-          GMAIL_USER: ${{ secrets.GMAIL_USER }}
-          GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
-        run: |
-          if [ -z "$GMAIL_USER" ] || [ -z "$GMAIL_APP_PASSWORD" ]; then
-            echo "ERROR: Missing required secrets (GMAIL_USER and/or GMAIL_APP_PASSWORD)."
-            exit 1
-          fi
-          echo "Secrets validation OK"
-
-      - name: Run job scraper
+      - name: Run scraper
         env:
           GMAIL_USER: ${{ secrets.GMAIL_USER }}
           GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
           PYTHONIOENCODING: utf-8
         run: python -u scraper.py
 
-      - name: Upload scraper log
+      - name: Upload log
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: job-scraper-log
+          name: scraper-log
           path: job_scraper.log
 
       - name: Upload email preview
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: job-email-preview
+          name: email-preview
           path: job_email_preview.html
