@@ -1,3 +1,4 @@
+
 import requests
 import json
 import smtplib
@@ -6,7 +7,11 @@ from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from datetime import datetime
 from bs4 import BeautifulSoup
+import logging
 
+# Setup logging
+logging.basicConfig(level=logging.INFO, format='%(message)s')
+logger = logging.getLogger(__name__)
 # --- CONFIGURACIÓN ---
 RECIPIENT_EMAIL = "alejandrosancheztilve02@gmail.com"
 SENDER_EMAIL = os.environ.get("GMAIL_USER")
@@ -37,69 +42,12 @@ KEYWORDS_RESEARCH = [
 
 ALL_KEYWORDS = KEYWORDS_IT + KEYWORDS_FINANCE + KEYWORDS_RESEARCH
 
-def fetch_jobs_nav():
-    """Buscar trabajos en arbeidsplassen.nav.no"""
-    all_jobs = []
-    search_queries = [
-        "developer", "python", "IT", "automation",
-        "research informatikk", "fintech", "software engineer"
-    ]
-    headers = {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
-    }
-    
-    for query in search_queries:
-        try:
-            url = "https://arbeidsplassen.nav.no/stillinger"
-            params = {"q": query, "sort": "0"}
-            response = requests.get(url, params=params, headers=headers, timeout=15)
-            
-            if response.status_code == 200:
-                soup = BeautifulSoup(response.text, 'html.parser')
-                
-                # Los artículos están en <article> sin data-testid específico
-                articles = soup.find_all('article')
-                extracted = []
-                
-                for article in articles:
-                    try:
-                        # Busca el enlace dentro del artículo
-                        link = article.find('a', href=True)
-                        if link and '/stillinger/stilling/' in link.get('href', ''):
-                            title_elem = link.find('h2') or link.find('span', class_=lambda x: x and 'title' in x.lower())
-                            if not title_elem:
-                                title_elem = link
-                            
-                            title = title_elem.get_text(strip=True)
-                            url_href = link.get('href', '')
-                            if not url_href.startswith('http'):
-                                url_href = f"https://arbeidsplassen.nav.no{url_href}"
-                            
-                            # Busca empleador y ubicación
-                            employer = ""
-                            location = ""
-                            text_parts = article.get_text(strip=True).split('\n')
-                            
-                            extracted.append({
-                                "title": title,
-                                "url": url_href,
-                                "employer": employer,
-                                "location": location,
-                                "description": article.get_text(strip=True),
-                                "_source": "arbeidsplassen.nav.no"
-                            })
-                    except Exception as e:
-                        pass
-                
-                all_jobs.extend(extracted)
-                print(f"  arbeidsplassen '{query}': {len(extracted)} ofertas")
-            else:
-                print(f"  arbeidsplassen '{query}': status {response.status_code}")
-        except Exception as e:
-            print(f"  Error arbeidsplassen '{query}': {str(e)[:50]}")
-    
-    return all_jobs
 
+def fetch_jobs_nav():
+    """Buscar trabajos en arbeidsplassen.nav.no - NOTA: Requiere JavaScript rendering"""
+    logger.info("ℹ️  arbeidsplassen.nav.no usa renderizado JavaScript - saltando por ahora")
+    logger.info("   (Los datos están disponibles en finn.no)")
+    return []
 def fetch_jobs_finn():
     """Buscar trabajos en finn.no usando web scraping"""
     all_jobs = []
@@ -324,25 +272,33 @@ def send_email(html_content, job_count):
         server.sendmail(SENDER_EMAIL, RECIPIENT_EMAIL, msg.as_string())
     print(f"✅ Email enviado con {job_count} ofertas a {RECIPIENT_EMAIL}")
 
+
 def main():
-    print("🔍 Buscando ofertas en arbeidsplassen.nav.no...")
-    nav_jobs = fetch_jobs_nav()
-    print(f"📦 {len(nav_jobs)} ofertas obtenidas de arbeidsplassen")
+    print("\n" + "="*70)
+    print("🇳🇴 SCRAPER DE OFERTAS DE TRABAJO - NORUEGA")
+    print("="*70)
     
-    print("\n🔍 Buscando ofertas en finn.no...")
+    print("\n🔍 Buscando ofertas...")
+    
+    # Intentar arbeidsplassen
+    nav_jobs = fetch_jobs_nav()
+    
+    # Buscar en finn.no
+    print("\n🔍 Buscando en finn.no...")
     finn_jobs = fetch_jobs_finn()
     print(f"📦 {len(finn_jobs)} ofertas obtenidas de finn.no")
     
     raw_jobs = nav_jobs + finn_jobs
-    print(f"\n📦 {len(raw_jobs)} ofertas totales obtenidas")
+    print(f"\n📊 {len(raw_jobs)} ofertas totales obtenidas")
     
     # Debug: mostrar primeras 3 ofertas
-    print("\n📋 Primeras 3 ofertas sin procesar:")
-    for i, job in enumerate(raw_jobs[:3]):
-        title = job.get("title", "")[:60]
-        source = job.get("_source", "unknown")
-        desc_len = len(job.get("description", ""))
-        print(f"  {i+1}. [{source}] {title} (desc: {desc_len} chars)")
+    if len(raw_jobs) > 0:
+        print("\n📋 Primeras 3 ofertas sin procesar:")
+        for i, job in enumerate(raw_jobs[:3]):
+            title = job.get("title", "")[:60]
+            source = job.get("_source", "unknown")
+            desc_len = len(job.get("description", ""))
+            print(f"  {i+1}. [{source}] {title} (desc: {desc_len} chars)")
     
     unique_jobs = deduplicate(raw_jobs)
     print(f"\n🔄 {len(unique_jobs)} ofertas únicas tras deduplicar")
@@ -354,8 +310,8 @@ def main():
     for cat, jobs in categorized.items():
         print(f"   {cat}: {len(jobs)}")
     
+    print("\n" + "="*70)
     html, count = build_email_html(categorized)
     send_email(html, count)
-
 if __name__ == "__main__":
     main()
