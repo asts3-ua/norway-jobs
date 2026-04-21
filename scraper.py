@@ -21,7 +21,7 @@ logging.basicConfig(level=logging.INFO, format='%(message)s')
 logger = logging.getLogger(__name__)
 LOG_FILE = Path("job_scraper.log")
 EMAIL_PREVIEW_FILE = Path("job_email_preview.html")
-BUILD_TAG = "GH-ACTIONS-FINN-V3"
+BUILD_TAG = "GH-ACTIONS-TOP15-JUNIOR-V4"
 
 
 def log(message):
@@ -60,6 +60,98 @@ KEYWORDS_RESEARCH = [
 ]
 
 ALL_KEYWORDS = KEYWORDS_IT + KEYWORDS_FINANCE + KEYWORDS_RESEARCH
+
+PROFILE_ROLE_KEYWORDS = [
+    "backend", "frontend", "fullstack", "developer", "utvikler", "analyst", "bi", "qa", "test", "support"
+]
+PROFILE_STACK_KEYWORDS = [
+    "python", "javascript", "typescript", "sql", "power bi", "aws", "azure", "java", "php"
+]
+PROFILE_BONUS_KEYWORDS = [
+    "genai", "llm", "agent", "ai agent", "trading", "markets", "stock", "fintech", "finance", "financial", "investment", "quant"
+]
+JUNIOR_POSITIVE_KEYWORDS = ["junior", "graduate", "entry", "trainee", "intern", "nyutdannet"]
+SENIOR_NEGATIVE_KEYWORDS = ["senior", "lead", "principal", "staff", "architect", "manager"]
+
+
+def translate_title_to_spanish(title):
+    translated = title.lower()
+    replacements = [
+        ("software developer", "desarrollador de software"),
+        ("backend developer", "desarrollador backend"),
+        ("frontend developer", "desarrollador frontend"),
+        ("fullstack developer", "desarrollador fullstack"),
+        ("data analyst", "analista de datos"),
+        ("business analyst", "analista de negocio"),
+        ("machine learning", "aprendizaje automatico"),
+        ("artificial intelligence", "inteligencia artificial"),
+        ("utvikler", "desarrollador"),
+        ("analytiker", "analista"),
+        ("forsker", "investigador"),
+        ("ingenior", "ingeniero"),
+        ("engineer", "ingeniero"),
+        ("developer", "desarrollador"),
+    ]
+    for old, new in replacements:
+        translated = translated.replace(old, new)
+    translated = " ".join(translated.split())
+    if not translated:
+        return title
+    return translated[:1].upper() + translated[1:]
+
+
+def score_job_for_profile(job):
+    text = f"{job.get('title', '')} {job.get('description', '')} {job.get('employer', '')}".lower()
+    reasons = []
+    score = 0
+
+    role_hits = [kw for kw in PROFILE_ROLE_KEYWORDS if kw in text]
+    if role_hits:
+        score += 30 + min(10, len(role_hits) * 2)
+        reasons.append((30, f"Rol alineado con tu perfil ({', '.join(role_hits[:3])})"))
+
+    stack_hits = [kw for kw in PROFILE_STACK_KEYWORDS if kw in text]
+    if stack_hits:
+        score += 35 + min(12, len(stack_hits) * 3)
+        reasons.append((35, f"Pide stack que dominas ({', '.join(stack_hits[:4])})"))
+
+    bonus_hits = [kw for kw in PROFILE_BONUS_KEYWORDS if kw in text]
+    if bonus_hits:
+        score += 25 + min(10, len(bonus_hits) * 2)
+        reasons.append((25, f"Tiene foco en IA/finanzas ({', '.join(bonus_hits[:3])})"))
+
+    junior_hits = [kw for kw in JUNIOR_POSITIVE_KEYWORDS if kw in text]
+    if junior_hits:
+        score += 20
+        reasons.append((20, "Menciona nivel junior/entrada"))
+
+    senior_hits = [kw for kw in SENIOR_NEGATIVE_KEYWORDS if kw in text]
+    if senior_hits:
+        score -= 18
+        reasons.append((-18, "Parece orientada a seniority alto"))
+    else:
+        score += 8
+        reasons.append((8, "No indica seniority alto claramente"))
+
+    reasons = [r for _, r in sorted(reasons, key=lambda x: x[0], reverse=True)]
+    return score, reasons[:3]
+
+
+def build_top_jobs(categorized, top_n=15):
+    all_jobs = []
+    for category, jobs in categorized.items():
+        for job in jobs:
+            score, reasons = score_job_for_profile(job)
+            all_jobs.append({
+                **job,
+                "category": category,
+                "score": score,
+                "fit_reason": " | ".join(reasons),
+                "title_es": translate_title_to_spanish(job.get("title", "")),
+            })
+
+    all_jobs.sort(key=lambda x: (x["score"], x.get("title", "")), reverse=True)
+    return all_jobs[:top_n]
 
 
 def fetch_jobs_nav():
@@ -354,53 +446,53 @@ def filter_and_categorize(jobs):
 
     return matched
 
-def build_email_html(categorized, stats=None):
+def build_email_html(top_jobs, stats=None):
     today = datetime.now().strftime("%d/%m/%Y")
-    total = sum(len(v) for v in categorized.values())
+    total = len(top_jobs)
     stats = stats or {}
-    sections = ""
-    for category, jobs in categorized.items():
-        if not jobs:
-            continue
-        rows = ""
-        for j in jobs:
-            deadline = f"<br><small style='color:#888;'>⏰ Plazo: {j['deadline'][:10]}</small>" if j['deadline'] else ""
-            source_badge = f"<br><small style='color:#666; font-weight:bold;'>🔗 {j['source']}</small>"
-            rows += f"""
-            <tr>
-                <td style="padding:12px; border-bottom:1px solid #f0f0f0;">
-                    <strong><a href="{j['url']}" style="color:#0057b8; text-decoration:none;">{j['title']}</a></strong><br>
-                    <span style="color:#555;">🏢 {j['employer']}</span><br>
-                    <span style="color:#555;">📍 {j['location']}</span>{deadline}{source_badge}
-                </td>
-            </tr>
-            """
-        sections += f"""
-        <div style="margin-bottom:24px;">
-            <h3 style="background:#f0f4ff; padding:10px 16px; border-radius:6px; margin:0 0 8px;">
-                {category} — {len(jobs)} ofertas
-            </h3>
-            <table width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse; font-size:14px;">
-                {rows}
-            </table>
-        </div>
+    rows = ""
+    for idx, j in enumerate(top_jobs, start=1):
+        deadline = f"<br><small style='color:#888;'>⏰ Plazo: {j['deadline'][:10]}</small>" if j['deadline'] else ""
+        rows += f"""
+        <tr>
+            <td style="padding:14px; border-bottom:1px solid #f0f0f0;">
+                <div style="font-size:12px; color:#777; margin-bottom:4px;">#{idx} · Score {j['score']} · {j['category']}</div>
+                <strong><a href="{j['url']}" style="color:#0057b8; text-decoration:none;">{j['title_es']}</a></strong><br>
+                <small style="color:#666;">Original: {j['title']}</small><br>
+                <span style="color:#555;">🏢 {j['employer']}</span><br>
+                <span style="color:#555;">📍 {j['location']}</span>{deadline}<br>
+                <small style="color:#1f4f8f;"><strong>Por qué encaja:</strong> {j['fit_reason']}</small><br>
+                <small style="color:#666; font-weight:bold;">🔗 {j['source']}</small>
+            </td>
+        </tr>
         """
+
+    sections = f"""
+    <div style="margin-bottom:24px;">
+        <h3 style="background:#f0f4ff; padding:10px 16px; border-radius:6px; margin:0 0 8px;">
+            Top {total} ofertas recomendadas para perfil junior
+        </h3>
+        <table width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse; font-size:14px;">
+            {rows}
+        </table>
+    </div>
+    """
     if total == 0:
         sections = "<p style='color:#888;'>No se encontraron ofertas nuevas relevantes hoy. Inténtalo mañana 💪</p>"
     html = f"""
     <html><body style="background:#f4f4f4; padding:20px; font-family:Arial,sans-serif;">
         <div style="max-width:680px; margin:auto; background:white; border-radius:10px; overflow:hidden; box-shadow:0 2px 12px rgba(0,0,0,0.1);">
             <div style="background:#0057b8; color:white; padding:22px 28px;">
-                <h2 style="margin:0; font-size:20px;">🇳🇴 Ofertas en Noruega — {today}</h2>
-                <p style="margin:6px 0 0; opacity:0.85; font-size:14px;">{total} ofertas relevantes · IT / Fintech / Investigación</p>
+                <h2 style="margin:0; font-size:20px;">🇳🇴 Top ofertas en Noruega — {today}</h2>
+                <p style="margin:6px 0 0; opacity:0.85; font-size:14px;">Top {total} ofertas priorizadas para tu perfil junior (IA/finanzas/tech)</p>
             </div>
             <div style="padding:24px 28px;">
                 <div style="font-size:12px; color:#666; background:#f7f7f7; border:1px solid #eee; border-radius:8px; padding:8px 10px; margin-bottom:14px;">
-                    Build: {BUILD_TAG} · Raw: {stats.get('raw', 'n/a')} · Unique: {stats.get('unique', 'n/a')} · Matched: {total}
+                    Build: {BUILD_TAG} · Raw: {stats.get('raw', 'n/a')} · Unique: {stats.get('unique', 'n/a')} · Matched: {stats.get('matched', 'n/a')} · Top: {total}
                 </div>
                 {sections}
                 <p style="margin-top:24px; color:#aaa; font-size:12px; border-top:1px solid #eee; padding-top:16px;">
-                    Fuentes: <a href="https://arbeidsplassen.nav.no" style="color:#0057b8;">arbeidsplassen.nav.no</a> · <a href="https://finn.no" style="color:#0057b8;">finn.no</a> — Filtrado por keywords IT/Tech/Fintech para el perfil de Alejandro Sánchez Tilve
+                    Fuentes: <a href="https://arbeidsplassen.nav.no" style="color:#0057b8;">arbeidsplassen.nav.no</a> · <a href="https://finn.no" style="color:#0057b8;">finn.no</a> — Ranking junior personalizado para Alejandro Sánchez Tilve
                 </p>
             </div>
         </div>
@@ -415,7 +507,7 @@ def send_email(html_content, job_count):
         return False
 
     msg = MIMEMultipart("alternative")
-    msg["Subject"] = f"[{BUILD_TAG}] 🇳🇴 {job_count} ofertas en Noruega — {datetime.now().strftime('%d/%m/%Y')}"
+    msg["Subject"] = f"[{BUILD_TAG}] 🇳🇴 Top {job_count} ofertas para ti — {datetime.now().strftime('%d/%m/%Y')}"
     msg["From"] = SENDER_EMAIL
     msg["To"] = RECIPIENT_EMAIL
     msg.attach(MIMEText(html_content, "html"))
@@ -473,11 +565,14 @@ def main():
     log(f"\n✅ {total} ofertas relevantes filtradas")
     for cat, jobs in categorized.items():
         log(f"   {cat}: {len(jobs)}")
+
+    top_jobs = build_top_jobs(categorized, top_n=15)
+    log(f"\n🏆 Top seleccionadas para perfil junior: {len(top_jobs)}")
     
     print("\n" + "="*70)
     log("=== FIN EJECUCIÓN ===")
-    stats = {"raw": len(raw_jobs), "unique": len(unique_jobs)}
-    html, count = build_email_html(categorized, stats=stats)
+    stats = {"raw": len(raw_jobs), "unique": len(unique_jobs), "matched": total}
+    html, count = build_email_html(top_jobs, stats=stats)
     try:
         EMAIL_PREVIEW_FILE.write_text(html, encoding="utf-8")
         log(f"📝 Preview email guardada en {EMAIL_PREVIEW_FILE}")
