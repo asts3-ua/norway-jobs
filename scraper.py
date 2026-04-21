@@ -3,6 +3,7 @@ import requests
 import json
 import smtplib
 import os
+from pathlib import Path
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from datetime import datetime
@@ -12,6 +13,16 @@ import logging
 # Setup logging
 logging.basicConfig(level=logging.INFO, format='%(message)s')
 logger = logging.getLogger(__name__)
+LOG_FILE = Path("job_scraper.log")
+
+
+def log(message):
+    print(message)
+    try:
+        with LOG_FILE.open("a", encoding="utf-8") as handle:
+            handle.write(message + "\n")
+    except Exception:
+        pass
 # --- CONFIGURACIÓN ---
 RECIPIENT_EMAIL = "alejandrosancheztilve02@gmail.com"
 SENDER_EMAIL = os.environ.get("GMAIL_USER")
@@ -45,14 +56,15 @@ ALL_KEYWORDS = KEYWORDS_IT + KEYWORDS_FINANCE + KEYWORDS_RESEARCH
 
 def fetch_jobs_nav():
     """Buscar trabajos en arbeidsplassen.nav.no - NOTA: Requiere JavaScript rendering"""
-    logger.info("ℹ️  arbeidsplassen.nav.no usa renderizado JavaScript - saltando por ahora")
-    logger.info("   (Los datos están disponibles en finn.no)")
+    log("ℹ️  arbeidsplassen.nav.no usa renderizado JavaScript - saltando por ahora")
+    log("   (Los datos están disponibles en finn.no)")
     return []
 def fetch_jobs_finn():
     """Buscar trabajos en finn.no usando web scraping"""
     all_jobs = []
     headers = {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+        "Accept-Language": "nb-NO,nb;q=0.9,no;q=0.8,en-US;q=0.7,en;q=0.6"
     }
     
     # finn.no tiene todas las ofertas en una sola búsqueda
@@ -63,12 +75,14 @@ def fetch_jobs_finn():
             url = "https://www.finn.no/job/search"
             params = {"q": keyword}
             response = requests.get(url, params=params, headers=headers, timeout=15)
+            log(f"  finn.no '{keyword}': status {response.status_code}, url={response.url}")
             
             if response.status_code == 200:
                 soup = BeautifulSoup(response.text, 'html.parser')
                 
                 # Encuentra todos los artículos (cada uno es una oferta)
                 articles = soup.find_all('article')
+                log(f"    articles encontrados: {len(articles)}")
                 extracted = []
                 
                 for article in articles:
@@ -118,14 +132,14 @@ def fetch_jobs_finn():
                                 "_source": "finn.no"
                             })
                     except Exception as e:
-                        pass
+                        log(f"    error parseando artículo: {str(e)[:120]}")
                 
                 all_jobs.extend(extracted)
-                print(f"  finn.no '{keyword}': {len(extracted)} ofertas")
+                log(f"  finn.no '{keyword}': {len(extracted)} ofertas")
             else:
-                print(f"  finn.no '{keyword}': status {response.status_code}")
+                log(f"  finn.no '{keyword}': status {response.status_code}")
         except Exception as e:
-            print(f"  Error finn.no '{keyword}': {str(e)[:50]}")
+            log(f"  Error finn.no '{keyword}': {str(e)[:120]}")
     
     return all_jobs
 
@@ -155,6 +169,7 @@ def categorize_job(title, description):
 def filter_and_categorize(jobs):
     matched = {"💻 IT/Tech": [], "💹 Finanzas/Fintech": [], "🔬 Investigación": []}
     skipped = 0
+    matched_examples = 0
     
     for job in jobs:
         source = job.get("_source", "unknown")
@@ -203,11 +218,14 @@ def filter_and_categorize(jobs):
                 "url": url,
                 "source": source
             })
+            if matched_examples < 10:
+                log(f"  [MATCH] {title[:80]} | {source} | kws={', '.join(found_keywords[:5])}")
+                matched_examples += 1
         else:
             skipped += 1
             # Log de debug para primeras 5 que se saltan
             if skipped <= 5:
-                print(f"  [SKIPPED] {title[:60]} | {source} | Text length: {len(text)}")
+                log(f"  [SKIPPED] {title[:60]} | {source} | Text length: {len(text)}")
     
     return matched
 
@@ -274,11 +292,17 @@ def send_email(html_content, job_count):
 
 
 def main():
+    if LOG_FILE.exists():
+        try:
+            LOG_FILE.unlink()
+        except Exception:
+            pass
     print("\n" + "="*70)
     print("🇳🇴 SCRAPER DE OFERTAS DE TRABAJO - NORUEGA")
     print("="*70)
     
     print("\n🔍 Buscando ofertas...")
+    log("=== INICIO EJECUCIÓN ===")
     
     # Intentar arbeidsplassen
     nav_jobs = fetch_jobs_nav()
@@ -286,31 +310,32 @@ def main():
     # Buscar en finn.no
     print("\n🔍 Buscando en finn.no...")
     finn_jobs = fetch_jobs_finn()
-    print(f"📦 {len(finn_jobs)} ofertas obtenidas de finn.no")
+    log(f"📦 {len(finn_jobs)} ofertas obtenidas de finn.no")
     
     raw_jobs = nav_jobs + finn_jobs
-    print(f"\n📊 {len(raw_jobs)} ofertas totales obtenidas")
+    log(f"\n📊 {len(raw_jobs)} ofertas totales obtenidas")
     
     # Debug: mostrar primeras 3 ofertas
     if len(raw_jobs) > 0:
-        print("\n📋 Primeras 3 ofertas sin procesar:")
+        log("\n📋 Primeras 3 ofertas sin procesar:")
         for i, job in enumerate(raw_jobs[:3]):
             title = job.get("title", "")[:60]
             source = job.get("_source", "unknown")
             desc_len = len(job.get("description", ""))
-            print(f"  {i+1}. [{source}] {title} (desc: {desc_len} chars)")
+            log(f"  {i+1}. [{source}] {title} (desc: {desc_len} chars)")
     
     unique_jobs = deduplicate(raw_jobs)
-    print(f"\n🔄 {len(unique_jobs)} ofertas únicas tras deduplicar")
+    log(f"\n🔄 {len(unique_jobs)} ofertas únicas tras deduplicar")
     
-    print("\n🔍 Filtrando por keywords...")
+    log("\n🔍 Filtrando por keywords...")
     categorized = filter_and_categorize(unique_jobs)
     total = sum(len(v) for v in categorized.values())
-    print(f"\n✅ {total} ofertas relevantes filtradas")
+    log(f"\n✅ {total} ofertas relevantes filtradas")
     for cat, jobs in categorized.items():
-        print(f"   {cat}: {len(jobs)}")
+        log(f"   {cat}: {len(jobs)}")
     
     print("\n" + "="*70)
+    log("=== FIN EJECUCIÓN ===")
     html, count = build_email_html(categorized)
     send_email(html, count)
 if __name__ == "__main__":
