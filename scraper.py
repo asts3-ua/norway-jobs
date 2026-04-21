@@ -23,6 +23,17 @@ LOG_FILE = Path("job_scraper.log")
 EMAIL_PREVIEW_FILE = Path("job_email_preview.html")
 BUILD_TAG = "GH-ACTIONS-TOP15-JUNIOR-V4"
 
+CATEGORY_ES = {
+    "💻 IT/Tech": "💻 Tecnología / IT",
+    "💹 Finanzas/Fintech": "💹 Finanzas / Fintech",
+    "🔬 Investigación": "🔬 Investigación / Universidad",
+}
+
+SOURCE_ES = {
+    "arbeidsplassen.nav.no": "Arbeidsplassen NAV",
+    "finn.no": "Finn.no",
+}
+
 
 def log(message):
     print(message)
@@ -81,6 +92,7 @@ def translate_title_to_spanish(title):
     translated = title.lower()
     replacements = [
         ("ai agent", "agente de ia"),
+        ("agentops engineer", "ingeniero de operaciones de agentes"),
         ("genai", "ia generativa"),
         ("machine learning engineer", "ingeniero de aprendizaje automático"),
         ("data scientist", "científico de datos"),
@@ -89,21 +101,33 @@ def translate_title_to_spanish(title):
         ("test engineer", "ingeniero de pruebas"),
         ("software engineer", "ingeniero de software"),
         ("software developer", "desarrollador de software"),
+        ("backend / fullstack developer", "desarrollador backend / fullstack"),
         ("backend developer", "desarrollador backend"),
         ("frontend developer", "desarrollador frontend"),
         ("fullstack developer", "desarrollador fullstack"),
+        ("full-stack developer", "desarrollador fullstack"),
         ("data analyst", "analista de datos"),
         ("business analyst", "analista de negocio"),
+        ("business developer", "desarrollador de negocio"),
         ("machine learning", "aprendizaje automatico"),
         ("artificial intelligence", "inteligencia artificial"),
+        ("developer", "desarrollador"),
+        ("engineer", "ingeniero"),
+        ("analyst", "analista"),
+        ("advisor", "asesor"),
+        ("consultant", "consultor"),
+        ("specialist", "especialista"),
         ("research assistant", "asistente de investigación"),
         ("junior researcher", "investigador junior"),
+        ("student", "estudiante"),
+        ("intern", "prácticas"),
+        ("trainee", "becario"),
+        ("artificial intelligence", "inteligencia artificial"),
+        ("full stack", "fullstack"),
         ("utvikler", "desarrollador"),
         ("analytiker", "analista"),
         ("forsker", "investigador"),
         ("ingenior", "ingeniero"),
-        ("engineer", "ingeniero"),
-        ("developer", "desarrollador"),
     ]
     for old, new in replacements:
         translated = translated.replace(old, new)
@@ -121,12 +145,12 @@ def score_job_for_profile(job):
     research_hits = [kw for kw in PROFILE_RESEARCH_KEYWORDS if kw in text]
     if research_hits:
         score += 50 + min(18, len(research_hits) * 3)
-        reasons.append((50, f"Encaja con investigación/universidad ({', '.join(research_hits[:4])})"))
+        reasons.append((50, f"Encaja con investigación o universidad ({', '.join(research_hits[:4])})"))
 
     finance_context_hits = [kw for kw in PROFILE_BONUS_KEYWORDS if kw in text]
     if finance_context_hits:
         score += 32 + min(12, len(finance_context_hits) * 2)
-        reasons.append((32, f"Tiene componente de finanzas/bolsa/IA ({', '.join(finance_context_hits[:4])})"))
+        reasons.append((32, f"Tiene componente de finanzas, bolsa o IA ({', '.join(finance_context_hits[:4])})"))
 
     role_hits = [kw for kw in PROFILE_ROLE_KEYWORDS if kw in text]
     if role_hits:
@@ -151,7 +175,7 @@ def score_job_for_profile(job):
     bonus_hits = [kw for kw in PROFILE_BONUS_KEYWORDS if kw in text]
     if bonus_hits:
         score += 22 + min(10, len(bonus_hits) * 2)
-        reasons.append((22, f"Tiene foco en IA/finanzas ({', '.join(bonus_hits[:4])})"))
+        reasons.append((22, f"Tiene foco en IA o finanzas ({', '.join(bonus_hits[:4])})"))
 
     junior_hits = [kw for kw in JUNIOR_POSITIVE_KEYWORDS if kw in text]
     if junior_hits:
@@ -159,15 +183,15 @@ def score_job_for_profile(job):
         if any(kw in text for kw in ["intern", "trainee", "graduate", "entry-level", "junior"]):
             junior_weight += 12
         score += junior_weight
-        reasons.append((junior_weight, "Menciona nivel junior/entrada"))
+        reasons.append((junior_weight, "Menciona nivel junior o de entrada"))
 
     senior_hits = [kw for kw in SENIOR_NEGATIVE_KEYWORDS if kw in text]
     if senior_hits:
         score -= 10
-        reasons.append((-10, "Parece orientada a seniority alto"))
+        reasons.append((-10, "Parece orientada a un nivel senior alto"))
     else:
         score += 12
-        reasons.append((12, "No indica seniority alto claramente"))
+        reasons.append((12, "No indica un nivel senior alto claramente"))
 
     if any(kw in text for kw in ["university", "universitet", "institute", "academic", "research"]):
         score += 10
@@ -496,13 +520,13 @@ def build_email_html(top_jobs, stats=None):
         rows += f"""
         <tr>
             <td style="padding:14px; border-bottom:1px solid #f0f0f0;">
-                <div style="font-size:12px; color:#777; margin-bottom:4px;">#{idx} · Score {j['score']} · {j['category']}</div>
+                <div style="font-size:12px; color:#777; margin-bottom:4px;">#{idx} · Puntuación {j['score']} · {CATEGORY_ES.get(j['category'], j['category'])}</div>
                 <strong><a href="{j['url']}" style="color:#0057b8; text-decoration:none;">{j['title_es']}</a></strong><br>
-                <small style="color:#666;">Original: {j['title']}</small><br>
-                <span style="color:#555;">🏢 {j['employer']}</span><br>
-                <span style="color:#555;">📍 {j['location']}</span>{deadline}<br>
+                <small style="color:#666;">Título original: {j['title']}</small><br>
+                <span style="color:#555;">🏢 Empresa: {j['employer']}</span><br>
+                <span style="color:#555;">📍 Ubicación: {j['location']}</span>{deadline}<br>
                 <small style="color:#1f4f8f;"><strong>Por qué encaja:</strong> {j['fit_reason']}</small><br>
-                <small style="color:#666; font-weight:bold;">🔗 {j['source']}</small>
+                <small style="color:#666; font-weight:bold;">🔗 {SOURCE_ES.get(j['source'], j['source'])}</small>
             </td>
         </tr>
         """
@@ -524,15 +548,15 @@ def build_email_html(top_jobs, stats=None):
         <div style="max-width:680px; margin:auto; background:white; border-radius:10px; overflow:hidden; box-shadow:0 2px 12px rgba(0,0,0,0.1);">
             <div style="background:#0057b8; color:white; padding:22px 28px;">
                 <h2 style="margin:0; font-size:20px;">🇳🇴 Top ofertas en Noruega — {today}</h2>
-                <p style="margin:6px 0 0; opacity:0.85; font-size:14px;">Top {total} ofertas priorizadas para tu perfil junior (IA/finanzas/tech)</p>
+                <p style="margin:6px 0 0; opacity:0.85; font-size:14px;">Top {total} ofertas priorizadas para tu perfil junior (IA, finanzas, universidad y tecnología)</p>
             </div>
             <div style="padding:24px 28px;">
                 <div style="font-size:12px; color:#666; background:#f7f7f7; border:1px solid #eee; border-radius:8px; padding:8px 10px; margin-bottom:14px;">
-                    Build: {BUILD_TAG} · Raw: {stats.get('raw', 'n/a')} · Unique: {stats.get('unique', 'n/a')} · Matched: {stats.get('matched', 'n/a')} · Top: {total}
+                    Build: {BUILD_TAG} · Brutas: {stats.get('raw', 'n/a')} · Únicas: {stats.get('unique', 'n/a')} · Coinciden: {stats.get('matched', 'n/a')} · Top: {total}
                 </div>
                 {sections}
                 <p style="margin-top:24px; color:#aaa; font-size:12px; border-top:1px solid #eee; padding-top:16px;">
-                    Fuentes: <a href="https://arbeidsplassen.nav.no" style="color:#0057b8;">arbeidsplassen.nav.no</a> · <a href="https://finn.no" style="color:#0057b8;">finn.no</a> — Ranking junior personalizado para Alejandro Sánchez Tilve
+                    Fuentes: <a href="https://arbeidsplassen.nav.no" style="color:#0057b8;">Arbeidsplassen NAV</a> · <a href="https://finn.no" style="color:#0057b8;">Finn.no</a> — Ranking junior personalizado para Alejandro Sánchez Tilve
                 </p>
             </div>
         </div>
@@ -604,7 +628,7 @@ def main():
     total = sum(len(v) for v in categorized.values())
     log(f"\n✅ {total} ofertas relevantes filtradas")
     for cat, jobs in categorized.items():
-        log(f"   {cat}: {len(jobs)}")
+        log(f"   {CATEGORY_ES.get(cat, cat)}: {len(jobs)}")
 
     top_jobs = build_top_jobs(categorized, top_n=15)
     log(f"\n🏆 Top seleccionadas para perfil junior: {len(top_jobs)}")
