@@ -62,21 +62,32 @@ KEYWORDS_RESEARCH = [
 ALL_KEYWORDS = KEYWORDS_IT + KEYWORDS_FINANCE + KEYWORDS_RESEARCH
 
 PROFILE_ROLE_KEYWORDS = [
-    "backend", "frontend", "fullstack", "developer", "utvikler", "analyst", "bi", "qa", "test", "support"
+    "backend", "frontend", "fullstack", "developer", "utvikler", "analyst", "bi", "qa", "test", "support", "data scientist", "data engineer"
 ]
 PROFILE_STACK_KEYWORDS = [
     "python", "javascript", "typescript", "sql", "power bi", "aws", "azure", "java", "php"
 ]
 PROFILE_BONUS_KEYWORDS = [
-    "genai", "llm", "agent", "ai agent", "trading", "markets", "stock", "fintech", "finance", "financial", "investment", "quant"
+    "genai", "llm", "agent", "ai agent", "agents", "trading", "markets", "stock", "stocks", "fintech", "finance", "financial", "investment", "quant", "portfolio", "equity", "macro", "bank"
 ]
-JUNIOR_POSITIVE_KEYWORDS = ["junior", "graduate", "entry", "trainee", "intern", "nyutdannet"]
-SENIOR_NEGATIVE_KEYWORDS = ["senior", "lead", "principal", "staff", "architect", "manager"]
+PROFILE_RESEARCH_KEYWORDS = [
+    "research", "researcher", "forsker", "forskning", "phd", "postdoc", "university", "universitet", "institute", "institutt", "laboratory", "laboratorium", "computer science", "informatikk", "academic", "research assistant", "junior researcher"
+]
+JUNIOR_POSITIVE_KEYWORDS = ["junior", "graduate", "entry", "entry-level", "trainee", "intern", "nyutdannet", "beginner", "associate"]
+SENIOR_NEGATIVE_KEYWORDS = ["senior", "lead", "principal", "staff", "architect", "manager", "head of", "director"]
 
 
 def translate_title_to_spanish(title):
     translated = title.lower()
     replacements = [
+        ("ai agent", "agente de ia"),
+        ("genai", "ia generativa"),
+        ("machine learning engineer", "ingeniero de aprendizaje automático"),
+        ("data scientist", "científico de datos"),
+        ("data engineer", "ingeniero de datos"),
+        ("qa engineer", "ingeniero de qa"),
+        ("test engineer", "ingeniero de pruebas"),
+        ("software engineer", "ingeniero de software"),
         ("software developer", "desarrollador de software"),
         ("backend developer", "desarrollador backend"),
         ("frontend developer", "desarrollador frontend"),
@@ -85,6 +96,8 @@ def translate_title_to_spanish(title):
         ("business analyst", "analista de negocio"),
         ("machine learning", "aprendizaje automatico"),
         ("artificial intelligence", "inteligencia artificial"),
+        ("research assistant", "asistente de investigación"),
+        ("junior researcher", "investigador junior"),
         ("utvikler", "desarrollador"),
         ("analytiker", "analista"),
         ("forsker", "investigador"),
@@ -105,33 +118,60 @@ def score_job_for_profile(job):
     reasons = []
     score = 0
 
+    research_hits = [kw for kw in PROFILE_RESEARCH_KEYWORDS if kw in text]
+    if research_hits:
+        score += 50 + min(18, len(research_hits) * 3)
+        reasons.append((50, f"Encaja con investigación/universidad ({', '.join(research_hits[:4])})"))
+
+    finance_context_hits = [kw for kw in PROFILE_BONUS_KEYWORDS if kw in text]
+    if finance_context_hits:
+        score += 32 + min(12, len(finance_context_hits) * 2)
+        reasons.append((32, f"Tiene componente de finanzas/bolsa/IA ({', '.join(finance_context_hits[:4])})"))
+
     role_hits = [kw for kw in PROFILE_ROLE_KEYWORDS if kw in text]
     if role_hits:
-        score += 30 + min(10, len(role_hits) * 2)
-        reasons.append((30, f"Rol alineado con tu perfil ({', '.join(role_hits[:3])})"))
+        role_weight = 30
+        if any(kw in text for kw in ["backend", "fullstack", "frontend"]):
+            role_weight += 10
+        if any(kw in text for kw in ["analyst", "bi", "data scientist", "data engineer"]):
+            role_weight += 12
+        if any(kw in text for kw in ["qa", "test", "support"]):
+            role_weight += 8
+        score += role_weight + min(10, len(role_hits) * 2)
+        reasons.append((role_weight, f"Rol alineado con tu perfil ({', '.join(role_hits[:4])})"))
 
     stack_hits = [kw for kw in PROFILE_STACK_KEYWORDS if kw in text]
     if stack_hits:
-        score += 35 + min(12, len(stack_hits) * 3)
-        reasons.append((35, f"Pide stack que dominas ({', '.join(stack_hits[:4])})"))
+        stack_weight = 36
+        if any(kw in text for kw in ["python", "sql", "power bi"]):
+            stack_weight += 10
+        score += stack_weight + min(14, len(stack_hits) * 3)
+        reasons.append((stack_weight, f"Pide stack que dominas ({', '.join(stack_hits[:4])})"))
 
     bonus_hits = [kw for kw in PROFILE_BONUS_KEYWORDS if kw in text]
     if bonus_hits:
-        score += 25 + min(10, len(bonus_hits) * 2)
-        reasons.append((25, f"Tiene foco en IA/finanzas ({', '.join(bonus_hits[:3])})"))
+        score += 22 + min(10, len(bonus_hits) * 2)
+        reasons.append((22, f"Tiene foco en IA/finanzas ({', '.join(bonus_hits[:4])})"))
 
     junior_hits = [kw for kw in JUNIOR_POSITIVE_KEYWORDS if kw in text]
     if junior_hits:
-        score += 20
-        reasons.append((20, "Menciona nivel junior/entrada"))
+        junior_weight = 30
+        if any(kw in text for kw in ["intern", "trainee", "graduate", "entry-level", "junior"]):
+            junior_weight += 12
+        score += junior_weight
+        reasons.append((junior_weight, "Menciona nivel junior/entrada"))
 
     senior_hits = [kw for kw in SENIOR_NEGATIVE_KEYWORDS if kw in text]
     if senior_hits:
-        score -= 18
-        reasons.append((-18, "Parece orientada a seniority alto"))
+        score -= 10
+        reasons.append((-10, "Parece orientada a seniority alto"))
     else:
-        score += 8
-        reasons.append((8, "No indica seniority alto claramente"))
+        score += 12
+        reasons.append((12, "No indica seniority alto claramente"))
+
+    if any(kw in text for kw in ["university", "universitet", "institute", "academic", "research"]):
+        score += 10
+        reasons.append((10, "Vinculada al entorno universitario o de investigación"))
 
     reasons = [r for _, r in sorted(reasons, key=lambda x: x[0], reverse=True)]
     return score, reasons[:3]
