@@ -2,10 +2,9 @@ name: Norway Jobs Daily
 
 on:
   schedule:
-    - cron: '0 7 * * *'
+    # GitHub usa UTC. 06:00 UTC = 08:00 en España durante horario de verano (CEST).
+    - cron: '0 6 * * *'
   workflow_dispatch:
-  push:
-    branches: [main]
 
 jobs:
   fetch-and-send:

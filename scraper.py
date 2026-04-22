@@ -73,7 +73,7 @@ KEYWORDS_RESEARCH = [
 ALL_KEYWORDS = KEYWORDS_IT + KEYWORDS_FINANCE + KEYWORDS_RESEARCH
 
 PROFILE_ROLE_KEYWORDS = [
-    "backend", "frontend", "fullstack", "developer", "utvikler", "analyst", "bi", "qa", "test", "support", "data scientist", "data engineer"
+    "backend", "frontend", "fullstack", "developer", "utvikler", "analyst", "qa", "test", "support", "data scientist", "data engineer", "business intelligence", "power bi"
 ]
 PROFILE_STACK_KEYWORDS = [
     "python", "javascript", "typescript", "sql", "power bi", "aws", "azure", "java", "php"
@@ -81,11 +81,68 @@ PROFILE_STACK_KEYWORDS = [
 PROFILE_BONUS_KEYWORDS = [
     "genai", "llm", "agent", "ai agent", "agents", "trading", "markets", "stock", "stocks", "fintech", "finance", "financial", "investment", "quant", "portfolio", "equity", "macro", "bank"
 ]
+PROFILE_AI_KEYWORDS = [
+    "genai", "llm", "agent", "agentic", "machine learning", "deep learning", "prompt", "rag", "nlp", "artificial intelligence", "kunstig intelligens"
+]
+PROFILE_DATA_KEYWORDS = [
+    "data scientist", "data science", "data engineer", "data analyst", "analytics", "business intelligence", "bi", "power bi", "sql", "databricks", "fabric"
+]
+PROFILE_FINANCE_KEYWORDS = [
+    "fintech", "finance", "financial", "investment", "trading", "markets", "stock", "stocks", "equity", "portfolio", "bank", "quant"
+]
+CORE_TECH_ROLE_KEYWORDS = [
+    "developer", "engineer", "data scientist", "data engineer", "data analyst", "analyst", "qa", "test", "support", "backend", "frontend", "fullstack", "software"
+]
 PROFILE_RESEARCH_KEYWORDS = [
     "research", "researcher", "forsker", "forskning", "phd", "postdoc", "university", "universitet", "institute", "institutt", "laboratory", "laboratorium", "computer science", "informatikk", "academic", "research assistant", "junior researcher"
 ]
+NON_TARGET_RESEARCH_KEYWORDS = [
+    "biology", "biologi", "biomedical", "medisin", "medicine", "medical", "nursing", "nurse", "veterinary", "music", "musikk", "pedagog", "pedagogikk", "paleoklim", "geology", "marine", "law", "juridisk", "history", "linguistics", "psychology", "pharmacy"
+]
+HARD_EXCLUDE_RESEARCH_DOMAINS = [
+    "biostatistics", "computational biology", "seabirds", "forest mapping", "precision forestry", "plant", "soil", "dairy", "hydrodynamic water quality", "coastal ecology", "ocean colour", "marine systems", "agriculture"
+]
 JUNIOR_POSITIVE_KEYWORDS = ["junior", "graduate", "entry", "entry-level", "trainee", "intern", "nyutdannet", "beginner", "associate"]
 SENIOR_NEGATIVE_KEYWORDS = ["senior", "lead", "principal", "staff", "architect", "manager", "head of", "director"]
+
+
+def has_sector_signal(text):
+    sector_keywords = set(
+        PROFILE_ROLE_KEYWORDS
+        + PROFILE_STACK_KEYWORDS
+        + PROFILE_AI_KEYWORDS
+        + PROFILE_DATA_KEYWORDS
+        + PROFILE_FINANCE_KEYWORDS
+        + ["software", "teknologi", "technology", "computer science", "informatikk", "cyber", "analytics", "artificial intelligence", "machine learning"]
+    )
+    return any(kw in text for kw in sector_keywords)
+
+
+def has_core_tech_role_signal(text):
+    return any(kw in text for kw in CORE_TECH_ROLE_KEYWORDS)
+
+
+def is_target_sector_job(title, description):
+    text = f"{title} {description}".lower()
+    research_hit = any(kw in text for kw in PROFILE_RESEARCH_KEYWORDS)
+    non_target_research_hit = any(kw in text for kw in NON_TARGET_RESEARCH_KEYWORDS)
+    hard_exclude_hit = any(kw in text for kw in HARD_EXCLUDE_RESEARCH_DOMAINS)
+    sector_hit = has_sector_signal(text)
+    core_role_hit = has_core_tech_role_signal(text)
+
+    # Excluir investigación de dominios no objetivo salvo que sea rol técnico claro.
+    if (non_target_research_hit or hard_exclude_hit) and not core_role_hit:
+        return False
+
+    # Priorizamos empleos técnicos/IA/datos/finanzas directamente.
+    if sector_hit:
+        return True
+
+    # Investigación solo si parece del sector objetivo (no biología/medicina/etc.).
+    if research_hit and not non_target_research_hit and any(kw in text for kw in ["computer science", "informatikk", "ai", "data", "technology", "teknologi"]):
+        return True
+
+    return False
 
 
 def translate_title_to_spanish(title):
@@ -142,15 +199,20 @@ def score_job_for_profile(job):
     reasons = []
     score = 0
 
-    research_hits = [kw for kw in PROFILE_RESEARCH_KEYWORDS if kw in text]
-    if research_hits:
-        score += 50 + min(18, len(research_hits) * 3)
-        reasons.append((50, f"Encaja con investigación o universidad ({', '.join(research_hits[:4])})"))
+    ai_hits = [kw for kw in PROFILE_AI_KEYWORDS if kw in text]
+    if ai_hits:
+        score += 52 + min(16, len(ai_hits) * 3)
+        reasons.append((52, f"Muy alineada con IA, GenAI o agentes ({', '.join(ai_hits[:4])})"))
 
-    finance_context_hits = [kw for kw in PROFILE_BONUS_KEYWORDS if kw in text]
-    if finance_context_hits:
-        score += 32 + min(12, len(finance_context_hits) * 2)
-        reasons.append((32, f"Tiene componente de finanzas, bolsa o IA ({', '.join(finance_context_hits[:4])})"))
+    data_hits = [kw for kw in PROFILE_DATA_KEYWORDS if kw in text]
+    if data_hits:
+        score += 45 + min(14, len(data_hits) * 3)
+        reasons.append((45, f"Muy alineada con ciencia y analítica de datos ({', '.join(data_hits[:4])})"))
+
+    finance_hits = [kw for kw in PROFILE_FINANCE_KEYWORDS if kw in text]
+    if finance_hits:
+        score += 35 + min(12, len(finance_hits) * 2)
+        reasons.append((35, f"Con componente de finanzas o bolsa ({', '.join(finance_hits[:4])})"))
 
     role_hits = [kw for kw in PROFILE_ROLE_KEYWORDS if kw in text]
     if role_hits:
@@ -176,6 +238,25 @@ def score_job_for_profile(job):
     if bonus_hits:
         score += 22 + min(10, len(bonus_hits) * 2)
         reasons.append((22, f"Tiene foco en IA o finanzas ({', '.join(bonus_hits[:4])})"))
+
+    research_hits = [kw for kw in PROFILE_RESEARCH_KEYWORDS if kw in text]
+    non_target_research_hits = [kw for kw in NON_TARGET_RESEARCH_KEYWORDS if kw in text]
+    hard_exclude_hits = [kw for kw in HARD_EXCLUDE_RESEARCH_DOMAINS if kw in text]
+    if research_hits:
+        if has_sector_signal(text):
+            score += 28 + min(10, len(research_hits) * 2)
+            reasons.append((28, f"Investigación aplicada a tu sector ({', '.join(research_hits[:4])})"))
+        else:
+            score -= 26
+            reasons.append((-26, "Investigación fuera de tu sector principal"))
+
+    if non_target_research_hits and not has_sector_signal(text):
+        score -= 22
+        reasons.append((-22, "Área de investigación poco alineada con tu objetivo técnico"))
+
+    if hard_exclude_hits and not has_core_tech_role_signal(text):
+        score -= 45
+        reasons.append((-45, "Dominio de investigación alejado de tu objetivo profesional"))
 
     junior_hits = [kw for kw in JUNIOR_POSITIVE_KEYWORDS if kw in text]
     if junior_hits:
@@ -263,8 +344,20 @@ def fetch_jobs_nav():
 
     log(f"  arbeidsplassen.nav.no IT: {len(all_jobs)} ofertas")
 
-    # Búsquedas adicionales por keywords de finanzas e investigación
-    extra_queries = ["fintech", "finance", "data analyst", "machine learning", "forsker", "PhD"]
+    # Búsquedas adicionales orientadas a tu perfil (IA, datos, finanzas, investigación técnica)
+    extra_queries = [
+        "fintech",
+        "finance",
+        "data analyst",
+        "data scientist",
+        "machine learning",
+        "artificial intelligence",
+        "genai",
+        "llm",
+        "computer science",
+        "informatikk",
+        "software developer",
+    ]
     for kw in extra_queries:
         try:
             r = requests.get(api_url, params={"q": kw, "size": 100}, headers=headers, timeout=15)
@@ -440,7 +533,7 @@ def deduplicate(jobs):
     unique = []
     for job in jobs:
         source = job.get("_source", "unknown")
-        uid = job.get("uuid") or job.get("id") or job.get("adid", "")
+        uid = job.get("uuid") or job.get("id") or job.get("adid") or job.get("url", "")
         if uid:
             key = f"{source}:{uid}"
         else:
@@ -493,13 +586,8 @@ def filter_and_categorize(jobs):
         title = normalized["title"]
         description = normalized["description"]
 
-        # Jobs from the nav.no API are already category-filtered — include all of them.
-        # Jobs scraped from finn.no need keyword matching since they come from broad searches.
-        if source == "arbeidsplassen.nav.no":
-            passes = True
-        else:
-            text = (title + " " + description).lower()
-            passes = any(kw.lower() in text for kw in ALL_KEYWORDS)
+        # Filtro único por sector objetivo para ambas fuentes.
+        passes = is_target_sector_job(title, description)
 
         if passes:
             category = categorize_job(title, description)
@@ -520,7 +608,7 @@ def build_email_html(top_jobs, stats=None):
         rows += f"""
         <tr>
             <td style="padding:14px; border-bottom:1px solid #f0f0f0;">
-                <div style="font-size:12px; color:#777; margin-bottom:4px;">#{idx} · Puntuación {j['score']} · {CATEGORY_ES.get(j['category'], j['category'])}</div>
+                <div style="font-size:12px; color:#777; margin-bottom:4px;">#{idx} · Score {j['score']} · {j['category']}</div>
                 <strong><a href="{j['url']}" style="color:#0057b8; text-decoration:none;">{j['title_es']}</a></strong><br>
                 <small style="color:#666;">Título original: {j['title']}</small><br>
                 <span style="color:#555;">🏢 Empresa: {j['employer']}</span><br>
