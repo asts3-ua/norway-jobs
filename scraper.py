@@ -3,6 +3,7 @@ import requests
 import json
 import smtplib
 import os
+import re
 from pathlib import Path
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
@@ -21,7 +22,7 @@ logging.basicConfig(level=logging.INFO, format='%(message)s')
 logger = logging.getLogger(__name__)
 LOG_FILE = Path("job_scraper.log")
 EMAIL_PREVIEW_FILE = Path("job_email_preview.html")
-BUILD_TAG = "GH-ACTIONS-TOP15-JUNIOR-V4"
+BUILD_TAG = "GH-ACTIONS-TOP15-STUDENT-OSLO-V5"
 
 CATEGORY_ES = {
     "💻 IT/Tech": "💻 Tecnología / IT",
@@ -105,6 +106,34 @@ HARD_EXCLUDE_RESEARCH_DOMAINS = [
 JUNIOR_POSITIVE_KEYWORDS = ["junior", "graduate", "entry", "entry-level", "trainee", "intern", "nyutdannet", "beginner", "associate"]
 SENIOR_NEGATIVE_KEYWORDS = ["senior", "lead", "principal", "staff", "architect", "manager", "head of", "director"]
 
+# Perfil objetivo: estudiante de último año de grado (junio 2026), mudanza a Oslo (agosto 2026)
+OSLO_PRIORITY_KEYWORDS = ["oslo", "fornebu", "lysaker", "aker brygge", "sandvika"]
+GRADUATE_PRIORITY_KEYWORDS = ["graduate", "junior", "entry-level", "entry level", "trainee", "intern", "nyutdannet", "bachelor", "part-time", "part time"]
+ENGLISH_FRIENDLY_KEYWORDS = ["english", "working language english", "international environment", "english speaking"]
+SECTOR_PRIORITY_KEYWORDS = ["fintech", "bank", "banking", "it consulting", "consulting", "saas", "ai startup", "startup", "research", "r&d", "innovation"]
+RESEARCH_INSTITUTE_KEYWORDS = ["sintef", "ntnu", "uio", "simula", "nr", "norsar", "university", "universitet", "institute", "institutt", "research centre", "mediafutures"]
+
+# HARD EXCLUDE rules
+ADVANCED_DEGREE_REQUIRED_KEYWORDS = [
+    "phd required", "requires phd", "doctorate required", "doctoral degree required",
+    "master required", "master's degree required", "requires master's", "requires masters", "msc required",
+    "minimum master's", "minimum masters", "postdoctoral"
+]
+MANDATORY_NORWEGIAN_KEYWORDS = [
+    "fluent norwegian", "native norwegian", "norwegian native", "must speak norwegian", "norwegian is required",
+    "requires norwegian", "norsk flytende", "må beherske norsk", "c1 norwegian", "c2 norwegian"
+]
+NORWEGIAN_OK_KEYWORDS = [
+    "b1 norwegian", "basic norwegian", "norwegian is a plus", "norwegian preferred", "norwegian beneficial", "norsk er en fordel"
+]
+SECURITY_DEFENSE_KEYWORDS = [
+    "security clearance", "clearance required", "sikkerhetsklarering", "classified", "nato secret",
+    "defence", "defense", "military", "forsvaret", "etterretning", "cyberoperasjoner", "armed forces"
+]
+PRIMARY_STACK_EXCLUDE_KEYWORDS = [
+    "kotlin", "matlab", "r programming", "r language", "spring boot", "java backend", "backend java"
+]
+
 
 def has_sector_signal(text):
     sector_keywords = set(
@@ -120,6 +149,40 @@ def has_sector_signal(text):
 
 def has_core_tech_role_signal(text):
     return any(kw in text for kw in CORE_TECH_ROLE_KEYWORDS)
+
+
+def hard_exclusion_reason(title, description, employer=""):
+    text = f"{title} {description} {employer}".lower()
+
+    # Requiere máster/PhD (exclusión dura)
+    if any(kw in text for kw in ADVANCED_DEGREE_REQUIRED_KEYWORDS):
+        return "Requiere máster o PhD"
+    if any(kw in text for kw in ["phd candidate", "phd fellowship", "postdoc", "postdoctoral"]):
+        return "Es una plaza de PhD/Postdoc"
+
+    # Requiere noruego fluido/nativo de forma obligatoria
+    mandatory_norwegian = any(kw in text for kw in MANDATORY_NORWEGIAN_KEYWORDS)
+    norwegian_plus = any(kw in text for kw in NORWEGIAN_OK_KEYWORDS)
+    if mandatory_norwegian and not norwegian_plus:
+        return "Exige noruego fluido/nativo como requisito"
+
+    # Security clearance / defensa / perfil militar
+    if any(kw in text for kw in SECURITY_DEFENSE_KEYWORDS):
+        return "Exige clearance o perfil de defensa/militar"
+
+    # 3+ años de experiencia profesional en stack específico
+    if re.search(r"\b(at least|minimum|min\.?|requires?)\s+3\+?\s*(years|year|yrs|años|år)\b", text):
+        return "Pide 3+ años de experiencia"
+    if re.search(r"\b[3-9]\+\s*(years|year|yrs|años|år)\b", text):
+        return "Pide 3+ años de experiencia"
+
+    # Stack principal no objetivo
+    if any(kw in text for kw in PRIMARY_STACK_EXCLUDE_KEYWORDS):
+        return "Stack principal fuera de objetivo (Kotlin/Java backend/Matlab/R)"
+    if ("java" in text and "backend" in text and "python" not in text):
+        return "Parece centrada en Java backend"
+
+    return None
 
 
 def is_target_sector_job(title, description):
@@ -199,6 +262,12 @@ def score_job_for_profile(job):
     reasons = []
     score = 0
 
+    # Prioridad geográfica: mudanza a Oslo en agosto 2026
+    oslo_hits = [kw for kw in OSLO_PRIORITY_KEYWORDS if kw in text]
+    if oslo_hits:
+        score += 18
+        reasons.append((18, "Ubicación alineada con Oslo"))
+
     ai_hits = [kw for kw in PROFILE_AI_KEYWORDS if kw in text]
     if ai_hits:
         score += 52 + min(16, len(ai_hits) * 3)
@@ -213,6 +282,11 @@ def score_job_for_profile(job):
     if finance_hits:
         score += 35 + min(12, len(finance_hits) * 2)
         reasons.append((35, f"Con componente de finanzas o bolsa ({', '.join(finance_hits[:4])})"))
+
+    sector_hits = [kw for kw in SECTOR_PRIORITY_KEYWORDS if kw in text]
+    if sector_hits:
+        score += 24 + min(10, len(sector_hits) * 2)
+        reasons.append((24, f"Sector prioritario para ti ({', '.join(sector_hits[:4])})"))
 
     role_hits = [kw for kw in PROFILE_ROLE_KEYWORDS if kw in text]
     if role_hits:
@@ -266,6 +340,15 @@ def score_job_for_profile(job):
         score += junior_weight
         reasons.append((junior_weight, "Menciona nivel junior o de entrada"))
 
+    graduate_hits = [kw for kw in GRADUATE_PRIORITY_KEYWORDS if kw in text]
+    if graduate_hits:
+        score += 18
+        reasons.append((18, "Abierta a perfiles graduate/part-time/junior"))
+
+    if any(kw in text for kw in ENGLISH_FRIENDLY_KEYWORDS):
+        score += 14
+        reasons.append((14, "Indica entorno internacional o inglés como idioma de trabajo"))
+
     senior_hits = [kw for kw in SENIOR_NEGATIVE_KEYWORDS if kw in text]
     if senior_hits:
         score -= 10
@@ -277,6 +360,11 @@ def score_job_for_profile(job):
     if any(kw in text for kw in ["university", "universitet", "institute", "academic", "research"]):
         score += 10
         reasons.append((10, "Vinculada al entorno universitario o de investigación"))
+
+    institute_hits = [kw for kw in RESEARCH_INSTITUTE_KEYWORDS if kw in text]
+    if institute_hits:
+        score += 16
+        reasons.append((16, f"Institución de investigación relevante ({', '.join(institute_hits[:3])})"))
 
     reasons = [r for _, r in sorted(reasons, key=lambda x: x[0], reverse=True)]
     return score, reasons[:3]
@@ -585,6 +673,11 @@ def filter_and_categorize(jobs):
         normalized = normalize_job(job)
         title = normalized["title"]
         description = normalized["description"]
+
+        exclusion = hard_exclusion_reason(title, description, normalized.get("employer", ""))
+        if exclusion:
+            log(f"  [X] {title[:70]} | {source} | Excluida: {exclusion}")
+            continue
 
         # Filtro único por sector objetivo para ambas fuentes.
         passes = is_target_sector_job(title, description)
